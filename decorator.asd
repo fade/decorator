@@ -9,8 +9,6 @@
   :depends-on (:cl-ppcre
                :alexandria
                :rutils
-               ;; :drakma
-               ;; :lparallel
                :trivial-download
                :simple-date-time
                :cl-mechanize)

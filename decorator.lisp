@@ -4,8 +4,6 @@
         #:decorator.app-utils
         #:simple-date-time
         #:trivial-download
-        ;; #:lparallel
-        ;; #:drakma
         #:cl-ppcre
         #:cl-mechanize)
   (:export :-main))
