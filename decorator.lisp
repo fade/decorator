@@ -41,14 +41,22 @@
   (let* ((seqnumber (first (last (rutils:split-sequence #\/ link))))
          (outname (format nil "~A~A~A" "wallhaven-" seqnumber ".jpg"))
          (outpath (merge-pathnames outname *picture-storage*))
-         (fileurl (format nil "~A/~A" url outname)))
-    (format t "~&~{~A~%~}" (list seqnumber outname outpath link fileurl))
-    (let ((no nil))
-      (handler-case (download fileurl outpath)
+         (fileurl (format nil "~A~A" url outname)))
+    
+    (handler-case
+          (progn
+            (download fileurl outpath)
+            )
         (error (c)
-          (format t "~&Caught condition, ~A" c)
-          (push c no)
-          nil)))))
+          (format t "~&>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>~%Caught condition, ~A~%<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<~%" c)
+          ;; duplidoc because if we're in this handler, we exit early.
+          (format t "~&~{~A~^~%~}~%========================================================================~%"
+                    (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
+          nil))
+    
+    (format t "~&~{~A~^~%~}~%========================================================================~%"
+            (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
+    t))
 
 (defun doit (linklist)
   "Given a list of target URL, from wallhaven, get the full sized
