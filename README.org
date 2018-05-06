@@ -8,5 +8,10 @@ a directory hierarchy under your $HOME: Desktop_pics/YYMMDD/ where
 YYMMDD literally represents the canonical date on which the program is
 run, and stores the images inside of it.
 
+At the moment, this code uses a function from the cl-mechanize system,
+which is not listed in the exports for that sytem. I have filed a pull
+request with the project author. In the meantime, reach into
+cl-mechanize and pull out the relevant function, even though this is rude.
+
 ** TODO -- implement login.
 ** TODO -- implement tag searching
