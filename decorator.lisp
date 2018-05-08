@@ -38,7 +38,12 @@
 ;;         (format t "~A~%" (link-uri link)))
 
 (defun getit (link &key (url *full-wallpaper-path*))
-  (let* ((seqnumber (first (last (rutils:split-sequence #\/ link))))
+  (let* ((*picture-storage* (ensure-directories-exist 
+                                  (merge-pathnames
+                                   (format nil "Desktop_pics/~A/"
+                                           (simple-date-time:YYYYMMDD (simple-date-time:from-universal-time (get-universal-time))))
+                                   (user-homedir-pathname))))
+         (seqnumber (first (last (rutils:split-sequence #\/ link))))
          (outname (format nil "~A~A~A" "wallhaven-" seqnumber ".jpg"))
          (outpath (merge-pathnames outname *picture-storage*))
          (fileurl (format nil "~A~A" url outname)))
