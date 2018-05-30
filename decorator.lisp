@@ -42,7 +42,7 @@
   appropriate wrapping newlines, so console output is not confused."
   (format stream "~&~%")
   (let ((carbuncle (download furl opath))) 
-    (format stream "~&~%")
+    (format stream "~&")
     carbuncle))
 
 (defun getit (link &key (url *full-wallpaper-path*) (type "jpg"))
@@ -58,20 +58,21 @@
     
     (handler-case
         (progn
-          (format t "~&~{~A~^~%~}~%========================================================================~%"
+          (format t "~&~%========================================================================~%~&~{~A~^~%~}~%"
                   (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
           (pprint-download fileurl outpath))
       ;; in this case, the file is probably not a jpg. try png.
       (HTTP-ERROR (c)
         (progn
           (format t "~&>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>~%Caught condition, ~A~%<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<~%" c)
-          (format t "~&Attempting to downloada PNG instead ")
+          (format t "~&Attempting to download PNG instead ")
           (let* ((outname (format nil "~A~A.~A" "wallhaven-" seqnumber "png"))
                  (outpath (merge-pathnames  outname *picture-storage*))
                  (fileurl (format nil "~A~A" url outname)))
             (format t "::: ~A~%" fileurl)
             (if (pprint-download fileurl outpath)
-                (format t "~&[[DONE]]~%~%")
+                (format t "~&~{~A~^~%~}~%================================================================[[DONE]]~%"
+                        (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
                 (error "Failed to get fallback png for image link:: ~A" fileurl)))))
       (error (c)
         (progn
@@ -88,4 +89,5 @@ wallpaper represented by each one."
         :collect thing))
 
 (defun -main (&optional args)
+  (declare (ignorable args))
   (doit (get-links)))
