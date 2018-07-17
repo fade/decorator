@@ -1,4 +1,5 @@
 ;; -*-lisp-*-
+
 (defpackage :decorator
   (:use #:cl
         #:decorator.app-utils
