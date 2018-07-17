@@ -33,10 +33,6 @@
       (if (cl-ppcre:scan "^.*\/wallpaper/\\d+$" (cl-mechanize::link-url link))
           (push (cl-mechanize::link-url link) linkresults)))
     linkresults))
-;; (stp:do-recursively (node results)
-;;       (format t "~A~%" node))
-;; (dolist (link (page-links results))
-;;         (format t "~A~%" (link-uri link)))
 
 (defun pprint-download (furl opath &key (stream t))
   "Download via the cl-mechanize download feature, but emit
