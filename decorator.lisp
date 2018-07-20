@@ -11,6 +11,26 @@
 
 (in-package :decorator)
 
+;;===============================================================================
+;; File functions and state to keep the images and their  directories trim.
+;;===============================================================================
+
+(defun sha1-file (path)
+  (let ((sha1 (ironclad:make-digest 'ironclad:sha1)))
+    (with-open-file (stream path :element-type '(unsigned-byte 8))
+      (ironclad:update-digest sha1 stream)
+      (values (ironclad:byte-array-to-hex-string (ironclad:produce-digest sha1)) path))))
+
+(defun load-pool (&key (path *aggregate-storage-directory*))
+  ;; for every file in the given directory (path), calculate its hash
+  ;; and put it in the special table
+  (loop for file in (uiop:directory-files path)
+        for (hash path) = (multiple-value-list (sha1-file file))
+        :do (progn
+              (format t "~&~A :: ~A" hash path)
+              (setf (gethash hash *what-we-already-have*) path)
+              (format t "     [Done]"))))
+
 (defparameter *picture-storage*
   (ensure-directories-exist 
    (merge-pathnames
@@ -19,7 +39,20 @@
     (user-homedir-pathname)))
   "datestamped destination directory for the images we are downloading.")
 
+(defparameter *aggregate-storage-directory*
+  (ensure-directories-exist
+   (merge-pathnames
+    (format nil "Desktop_pics/dpool/"))))
+
 (defparameter *full-wallpaper-path* "https://wallpapers.wallhaven.cc/wallpapers/full/")
+
+(defparameter *what-we-already-have* (make-hash-table :test #'equal))
+
+(when (= (hash-table-count *what-we-already-have*) 0)
+  (load-pool))
+
+;;===============================================================================
+
 
 (defvar *browser* (make-instance 'browser)
   "this creates a 'browser' object which is used by the rest of the mechanize protocol.")
@@ -42,6 +75,19 @@
     (format stream "~&")
     carbuncle))
 
+(defun already-got-it? (file &key (hashtable *what-we-already-have*))
+  (multiple-value-bind (hash path) (sha1-file file)
+    (if (gethash hash hashtable)
+        path
+        nil)))
+
+(defun delete-duplicate-file (file &key (hashtable *what-we-already-have*))
+  (multiple-value-bind (hash path) (sha1-file file)
+      (when (gethash hash hashtable)
+        (progn
+          (format t "~&Unlinking duplicate file ~A which already exists at ~A~%" path (gethash hash hashtable))
+          (delete-file path)))))
+
 (defun getit (link &key (url *full-wallpaper-path*) (type "jpg"))
   (let* ((*picture-storage* (ensure-directories-exist 
                              (merge-pathnames
@@ -57,7 +103,11 @@
         (progn
           (format t "~&~%========================================================================~%~&~{~A~^~%~}~%"
                   (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
-          (pprint-download fileurl outpath))
+          (pprint-download fileurl outpath)
+          ;; if the file lands, but we already have it, delete it.
+          (let* ((wegotit (already-got-it? outpath)))
+            (if wegotit
+                (delete-duplicate-file wegotit))))
       ;; in this case, the file is probably not a jpg. try png.
       (HTTP-ERROR (c)
         (progn
@@ -68,9 +118,17 @@
                  (fileurl (format nil "~A~A" url outname)))
             (format t "::: ~A~%" fileurl)
             (if (pprint-download fileurl outpath)
-                (format t "~&~{~A~^~%~}~%================================================================[[DONE]]~%"
-                        (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
+                (progn
+                  (let* ((wegotit (already-got-it? outpath)))
+                    (format t "~&!!!!!!!!!!!!!!!!!! [~A] !!!!!!!!!!!!!!!!!!" outpath)
+                    
+                    (when wegotit
+                      (format t "~&!!!!!!!!!!!!!!!!!! [~A] !!!!!!!!!!!!!!!!!!" wegotit)
+                      (delete-duplicate-file wegotit)))
+                  (format t "~&~{~A~^~%~}~%================================================================[[DONE]]~%"
+                          (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl)))
                 (error "Failed to get fallback png for image link:: ~A" fileurl)))))
+      
       (error (c)
         (progn
           (format t "Unthinkable things happened here... :: ~A~%" c)
@@ -85,6 +143,12 @@ wallpaper represented by each one."
         :when thing
         :collect thing))
 
+;;===============================================================================
+
+
+;;===============================================================================
+
 (defun -main (&optional args)
   (declare (ignorable args))
+  (load-pool)
   (doit (get-links)))

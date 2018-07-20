@@ -11,7 +11,8 @@
                :rutils
                :trivial-download
                :simple-date-time
-               :cl-mechanize)
+               :cl-mechanize
+               :ironclad)
   :pathname "./"
   :components ((:file "app-utils")
                (:file "decorator")))
