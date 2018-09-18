@@ -6,13 +6,15 @@
         #:simple-date-time
         #:trivial-download
         #:cl-ppcre
-        #:cl-mechanize)
+        #:cl-mechanize
+        #:zpb-exif
+        #:cl-progress-bar)
   (:export :-main))
 
 (in-package :decorator)
 
 ;;===============================================================================
-;; File functions and state to keep the images and their  directories trim.
+;; File functions and state to keep the images and their directories trim.
 ;;===============================================================================
 
 (defun sha1-file (path)
@@ -20,6 +22,13 @@
     (with-open-file (stream path :element-type '(unsigned-byte 8))
       (ironclad:update-digest sha1 stream)
       (values (ironclad:byte-array-to-hex-string (ironclad:produce-digest sha1)) path))))
+
+(defun log-file-hashes (&key (path *aggregate-storage-directory*)
+                          (output-file #P "/tmp/slow-swill.txt"))
+  (with-open-file (s output-file :direction :output :if-exists :supersede :if-does-not-exist :create)
+    (loop for file in (uiop:directory-files path)
+          for (hash path) = (multiple-value-list (sha1-file file))
+          :do (format s "~&~A :: ~A" hash path))))
 
 (defun load-pool (&key (path *aggregate-storage-directory*))
   ;; for every file in the given directory (path), calculate its hash
@@ -42,14 +51,16 @@
 (defparameter *aggregate-storage-directory*
   (ensure-directories-exist
    (merge-pathnames
-    (format nil "Desktop_pics/dpool/"))))
+    (format nil "Desktop_pics/dpool/")
+    (user-homedir-pathname))))
 
 (defparameter *full-wallpaper-path* "https://wallpapers.wallhaven.cc/wallpapers/full/")
 
 (defparameter *what-we-already-have* (make-hash-table :test #'equal))
 
-(when (= (hash-table-count *what-we-already-have*) 0)
-  (load-pool))
+(eval-when (:load-toplevel :execute)
+  (when (= (hash-table-count *what-we-already-have*) 0)
+    (load-pool)))
 
 ;;===============================================================================
 
@@ -85,7 +96,7 @@
   (multiple-value-bind (hash path) (sha1-file file)
       (when (gethash hash hashtable)
         (progn
-          (format t "~&Unlinking duplicate file ~A which already exists at ~A~%" path (gethash hash hashtable))
+          (format t "~&Unlinking duplicate file ~A which already exists at ~A~%~%" path (gethash hash hashtable))
           (delete-file path)))))
 
 (defun getit (link &key (url *full-wallpaper-path*) (type "jpg"))
@@ -101,8 +112,8 @@
     
     (handler-case
         (progn
-          (format t "~&~%========================================================================~%~&~{~A~^~%~}~%"
-                  (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
+          (format t "~&~%vvv=====================================================================~%~&Sequence number: ~0,9D ~%~{~A~^ ~%~}~%"
+                   seqnumber (list "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
           (pprint-download fileurl outpath)
           ;; if the file lands, but we already have it, delete it.
           (let* ((wegotit (already-got-it? outpath)))
@@ -121,19 +132,34 @@
                 (progn
                   (let* ((wegotit (already-got-it? outpath)))
                     (format t "~&!!!!!!!!!!!!!!!!!! [~A] !!!!!!!!!!!!!!!!!!" outpath)
-                    
                     (when wegotit
-                      (format t "~&!!!!!!!!!!!!!!!!!! [~A] !!!!!!!!!!!!!!!!!!" wegotit)
+                      (format t "~&!!!!!!!!!!!!!!!!!!Deleting duplicate file: [~A] !!~%~%" wegotit)
                       (delete-duplicate-file wegotit)))
-                  (format t "~&~{~A~^~%~}~%================================================================[[DONE]]~%"
-                          (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl)))
+                  (format t "~&sequence number: ~0,9D ~%~{~A~^ ~%~}~%========================================================================~%"
+                          seqnumber (list "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl)))
                 (error "Failed to get fallback png for image link:: ~A" fileurl)))))
       
       (error (c)
         (progn
           (format t "Unthinkable things happened here... :: ~A~%" c)
-          (format t "~&~{~A~^~%~}~%========================================================================~%"
-                  (list "sequence number:" seqnumber "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl)))))))
+          (format t "~&sequence number: ~0,9D ~%~{~A~^~%~}~%========================================================================~%"
+                  seqnumber (list "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl)))))))
+
+(defun merge-image-directories (temppath &optional (storepath *aggregate-storage-directory*))
+  "Take all the files in temppath, and move them into storepath.
+Assuming the directory has been filled using the function protocol
+defined in this file, then there will be no name collisions. All the
+files should be unique to 'storepath"
+  (let ((files (uiop:directory-files temppath)))
+    (loop for candidate in files
+          for outfile = (merge-pathnames (file-namestring candidate)
+                                         storepath)
+          do
+             (progn
+               (format t "~&Moving ~A to ~A... " candidate outfile)
+               (uiop:copy-file candidate outfile)
+               (uiop:delete-file-if-exists candidate)
+               (format t "[Done]")))))
 
 (defun doit (linklist)
   "Given a list of target URL, from wallhaven, get the full sized

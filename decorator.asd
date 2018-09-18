@@ -8,11 +8,15 @@
   :serial t
   :depends-on (:cl-ppcre
                :alexandria
+               :ubiquitous
                :rutils
                :trivial-download
                :simple-date-time
                :cl-mechanize
-               :ironclad)
+               :ironclad
+               :zpb-exif
+               :osicat
+               :cl-progress-bar)
   :pathname "./"
   :components ((:file "app-utils")
                (:file "decorator")))
