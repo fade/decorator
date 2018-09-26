@@ -59,7 +59,7 @@
 (defparameter *what-we-already-have* (make-hash-table :test #'equal))
 
 (eval-when (:load-toplevel :execute)
-  (when (= (hash-table-count *what-we-already-have*) 0)
+  (when (<= (hash-table-count *what-we-already-have*) 0)
     (load-pool)))
 
 ;;===============================================================================
@@ -117,7 +117,7 @@
           (pprint-download fileurl outpath)
           ;; if the file lands, but we already have it, delete it.
           (let* ((wegotit (already-got-it? outpath)))
-            (if wegotit
+            (when wegotit
                 (delete-duplicate-file wegotit))))
       ;; in this case, the file is probably not a jpg. try png.
       (HTTP-ERROR (c)
