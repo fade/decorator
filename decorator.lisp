@@ -33,12 +33,16 @@
 (defun load-pool (&key (path *aggregate-storage-directory*))
   ;; for every file in the given directory (path), calculate its hash
   ;; and put it in the special table
+  (format t "~&Loading hashes for pre-existing files in ~A~%" *aggregate-storage-directory*)
   (loop for file in (uiop:directory-files path)
         for (hash path) = (multiple-value-list (sha1-file file))
         :do (progn
-              (format t "~&~A :: ~A" hash path)
+              ;; (format t "~&~A :: ~A" hash path)
+              (format t "#")
               (setf (gethash hash *what-we-already-have*) path)
-              (format t "     [Done]"))))
+              ;; (format t "     [Done]")
+              ))
+  (format t "~&[Done]~%"))
 
 (defparameter *picture-storage*
   (ensure-directories-exist 

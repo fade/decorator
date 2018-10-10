@@ -15,7 +15,7 @@
                :cl-mechanize
                :ironclad
                :zpb-exif
-               :osicat
+               ;; :osicat
                :cl-progress-bar)
   :pathname "./"
   :components ((:file "app-utils")
