@@ -2,8 +2,9 @@
 
 (defpackage :decorator.app-utils
   (:use :cl)
-  (:export :internal-disable-debugger)
-  (:export :internal-quit))
+  (:export #:internal-disable-debugger)
+  (:export #:internal-quit
+           #:print-thread-info))
 
 (in-package :decorator.app-utils)
   
@@ -38,3 +39,12 @@
         kcl scl openmcl mcl abcl ecl)
 
   (error 'not-implemented :proc (list 'quit code))) 
+
+(defun print-thread-info ()
+      (let* ((curr-thread (bt:current-thread))
+             (curr-thread-name (bt:thread-name curr-thread))
+             (all-threads (bt:all-threads)))
+        (format t "Current thread: ~a~%~%" curr-thread)
+        (format t "Current thread name: ~a~%~%" curr-thread-name)
+        (format t "All threads:~% ~{~a~%~}~%" all-threads))
+      nil)

@@ -6,17 +6,21 @@
   :author "Brian O'Reilly <fade@deepsky.com>"
   :license "Lisp Lesser General Public License."
   :serial t
-  :depends-on (:cl-ppcre
-               :alexandria
-               :ubiquitous
-               :rutils
-               :trivial-download
-               :simple-date-time
-               :cl-mechanize
-               :ironclad
-               :zpb-exif
-               ;; :osicat
-               :cl-progress-bar)
+  :depends-on (#:cl-ppcre
+               #:cl-interpol
+               #:str
+               #:alexandria
+               #:ubiquitous
+               #:rutils
+               #:trivial-download
+               #:simple-date-time
+               #:cl-mechanize
+               #:bordeaux-threads
+               #:lparallel
+               #:ironclad
+               #:zpb-exif
+               ;; :cl-progress-bar
+               )
   :pathname "./"
   :components ((:file "app-utils")
                (:file "decorator")))

@@ -6,9 +6,12 @@
         #:simple-date-time
         #:trivial-download
         #:cl-ppcre
+        #:cl-interpol
         #:cl-mechanize
+        #:bordeaux-threads
         #:zpb-exif
-        #:cl-progress-bar)
+        ;; #:cl-progress-bar
+        )
   (:export :-main))
 
 (in-package :decorator)
@@ -36,9 +39,10 @@
   (format t "~&Loading hashes for pre-existing files in ~A~%" *aggregate-storage-directory*)
   (loop for file in (uiop:directory-files path)
         for (hash path) = (multiple-value-list (sha1-file file))
+        :unless (gethash hash *what-we-already-have*)
         :do (progn
-              ;; (format t "~&~A :: ~A" hash path)
-              (format t "#")
+              (format t "~&~A :: ~A" hash path)
+              ;; (format t "#")
               (setf (gethash hash *what-we-already-have*) path)
               ;; (format t "     [Done]")
               ))
@@ -47,8 +51,8 @@
 (defparameter *picture-storage*
   (ensure-directories-exist 
    (merge-pathnames
-    (format nil "Desktop_pics/~A/"
-            (simple-date-time:YYYYMMDD (simple-date-time:from-universal-time (get-universal-time))))
+    (format nil "Desktop_pics/~A/" (simple-date-time:YYYYMMDD
+                                    (simple-date-time:from-universal-time (get-universal-time))))
     (user-homedir-pathname)))
   "datestamped destination directory for the images we are downloading.")
 
@@ -58,7 +62,8 @@
     (format nil "Desktop_pics/dpool/")
     (user-homedir-pathname))))
 
-(defparameter *full-wallpaper-path* "https://wallpapers.wallhaven.cc/wallpapers/full/")
+(defparameter *full-wallpaper-path* "https://w.wallhaven.cc/full/"
+  "this path needs to be rectified with a bucket number and a filename.")
 
 (defparameter *what-we-already-have* (make-hash-table :test #'equal))
 
@@ -72,15 +77,30 @@
 (defvar *browser* (make-instance 'browser)
   "this creates a 'browser' object which is used by the rest of the mechanize protocol.")
 
-(defun get-links (&key (url "https://alpha.wallhaven.cc/random"))
+;; (defun plonk (&key (url "https://alpha.wallhaven.cc/random") (page 1))
+;;   "Fully integrated getter with pagination."
+;;   (let* ((url (format nil "~A?page=~A" url page)))
+;;     (enable-interpol-syntax)
+;;     (let ((results (browser-page *browser*))
+;;           (linkresults nil))
+;;       (dolist (link (page-links results))
+;;         (if (cl-ppcre:scan "^.*/w/.*" (cl-mechanize::link-url link))
+;;             (push (cl-mechanize::link-url link) linkresults)))
+;;       (disable-interpol-syntax)
+;;       linkresults)))
+
+(defun get-random-links (&key (url "https://wallhaven.cc/random") (page 1))
   "returns a list of URLs pointing to random wallpapers at wallhaven.cc."
-  (fetch url *browser*)
-  (let ((results (browser-page *browser*))
-        (linkresults nil))
-    (dolist (link (page-links results))
-      (if (cl-ppcre:scan "^.*\/wallpaper/\\d+$" (cl-mechanize::link-url link))
-          (push (cl-mechanize::link-url link) linkresults)))
-    linkresults))
+  (enable-interpol-syntax)
+  (let* ((url (format nil "~A?page=~A" url page)))
+    (fetch url *browser*)
+    (let ((results (browser-page *browser*))
+          (linkresults nil))
+      (dolist (link (page-links results))
+        (if (cl-ppcre:scan "^.*/w/.*" (cl-mechanize::link-url link))
+            (push (cl-mechanize::link-url link) linkresults)))
+      (disable-interpol-syntax)
+      linkresults)))
 
 (defun pprint-download (furl opath &key (stream t))
   "Download via the cl-mechanize download feature, but emit
@@ -110,9 +130,10 @@
                                       (simple-date-time:YYYYMMDD (simple-date-time:from-universal-time (get-universal-time))))
                               (user-homedir-pathname))))
          (seqnumber (first (last (rutils:split-sequence #\/ link))))
+         (bucket (subseq seqnumber 0 2))
          (outname (format nil "~A~A.~A" "wallhaven-" seqnumber type))
          (outpath (merge-pathnames outname *picture-storage*))
-         (fileurl (format nil "~A~A" url outname)))
+         (fileurl (format nil "~A~A/~A" url bucket outname)))
     
     (handler-case
         (progn
@@ -129,8 +150,9 @@
           (format t "~&>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>~%Caught condition, ~A~%<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<~%" c)
           (format t "~&Attempting to download PNG instead ")
           (let* ((outname (format nil "~A~A.~A" "wallhaven-" seqnumber "png"))
+                 (bucket (subseq seqnumber 0 2))
                  (outpath (merge-pathnames  outname *picture-storage*))
-                 (fileurl (format nil "~A~A" url outname)))
+                 (fileurl (format nil "~A~A/~A" url bucket outname)))
             (format t "::: ~A~%" fileurl)
             (if (pprint-download fileurl outpath)
                 (progn
@@ -168,10 +190,11 @@ files should be unique to 'storepath"
 (defun doit (linklist)
   "Given a list of target URL, from wallhaven, get the full sized
 wallpaper represented by each one."
+  ;; (mapc #'getit linklist)
   (loop for link in linklist
         for thing = (getit link)
         :when thing
-        :collect thing))
+          :collect thing))
 
 ;;===============================================================================
 
@@ -180,5 +203,6 @@ wallpaper represented by each one."
 
 (defun -main (&optional args)
   (declare (ignorable args))
-  (load-pool)
-  (doit (get-links)))
+  ;; (load-pool)
+  (print args)
+  (doit (get-random-links)))
