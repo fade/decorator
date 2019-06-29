@@ -19,6 +19,7 @@
                #:lparallel
                #:ironclad
                #:zpb-exif
+               #:net.didierverna.clon
                ;; :cl-progress-bar
                )
   :pathname "./"

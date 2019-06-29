@@ -36,16 +36,13 @@
 (defun load-pool (&key (path *aggregate-storage-directory*))
   ;; for every file in the given directory (path), calculate its hash
   ;; and put it in the special table
-  (format t "~&Loading hashes for pre-existing files in ~A~%" *aggregate-storage-directory*)
+  (format t "~&Loading hashes for pre-existing files in ~A~%" path)
   (loop for file in (uiop:directory-files path)
         for (hash path) = (multiple-value-list (sha1-file file))
         :unless (gethash hash *what-we-already-have*)
         :do (progn
               (format t "~&~A :: ~A" hash path)
-              ;; (format t "#")
-              (setf (gethash hash *what-we-already-have*) path)
-              ;; (format t "     [Done]")
-              ))
+              (setf (gethash hash *what-we-already-have*) path)))
   (format t "~&[Done]~%"))
 
 (defparameter *picture-storage*
@@ -77,22 +74,26 @@
 (defvar *browser* (make-instance 'browser)
   "this creates a 'browser' object which is used by the rest of the mechanize protocol.")
 
-;; (defun plonk (&key (url "https://alpha.wallhaven.cc/random") (page 1))
-;;   "Fully integrated getter with pagination."
-;;   (let* ((url (format nil "~A?page=~A" url page)))
-;;     (enable-interpol-syntax)
-;;     (let ((results (browser-page *browser*))
-;;           (linkresults nil))
-;;       (dolist (link (page-links results))
-;;         (if (cl-ppcre:scan "^.*/w/.*" (cl-mechanize::link-url link))
-;;             (push (cl-mechanize::link-url link) linkresults)))
-;;       (disable-interpol-syntax)
-;;       linkresults)))
-
 (defun get-random-links (&key (url "https://wallhaven.cc/random") (page 1))
   "returns a list of URLs pointing to random wallpapers at wallhaven.cc."
   (enable-interpol-syntax)
   (let* ((url (format nil "~A?page=~A" url page)))
+    (fetch url *browser*)
+    (let ((results (browser-page *browser*))
+          (linkresults nil))
+      (dolist (link (page-links results))
+        (if (cl-ppcre:scan "^.*/w/.*" (cl-mechanize::link-url link))
+            (push (cl-mechanize::link-url link) linkresults)))
+      (disable-interpol-syntax)
+      linkresults)))
+
+(defun get-searched-links (searchterms &key (url "https://wallhaven.cc/search") (page 1))
+  "Return any images matched by wallhaven to the given searchterms."
+  (enable-interpol-syntax)
+  (let* ((searchterms (cond ((and (listp searchterms) (> (length searchterms) 1))
+                             (str:join "%20" searchterms))
+                            (t searchterms)))
+         (url (format nil "~A?q=~A&page=~A" url searchterms page)))
     (fetch url *browser*)
     (let ((results (browser-page *browser*))
           (linkresults nil))
