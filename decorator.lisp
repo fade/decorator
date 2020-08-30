@@ -10,6 +10,7 @@
         #:cl-mechanize
         #:bordeaux-threads
         #:zpb-exif
+        #:net.didierverna.clon
         ;; #:cl-progress-bar
         )
   (:export :-main))
@@ -87,13 +88,17 @@
       (disable-interpol-syntax)
       linkresults)))
 
+
+;; https://wallhaven.cc/search?q=city+night+woman+blue&categories=110&purity=100&sorting=relevance&order=desc
+;; https://wallhaven.cc/search?q=city%20night%20woman&categories=110&purity=100&sorting=relevance&order=desc&page=2
 (defun get-searched-links (searchterms &key (url "https://wallhaven.cc/search") (page 1))
   "Return any images matched by wallhaven to the given searchterms."
   (enable-interpol-syntax)
   (let* ((searchterms (cond ((and (listp searchterms) (> (length searchterms) 1))
-                             (str:join "%20" searchterms))
+                             (str:join "+" searchterms))
                             (t searchterms)))
          (url (format nil "~A?q=~A&page=~A" url searchterms page)))
+    (format t "~&|||~A~2%" url)
     (fetch url *browser*)
     (let ((results (browser-page *browser*))
           (linkresults nil))
@@ -198,12 +203,46 @@ wallpaper represented by each one."
           :collect thing))
 
 ;;===============================================================================
-
-
+;; Command Line Interface options and setup
 ;;===============================================================================
 
+(net.didierverna.clon:defsynopsis ()
+  (text :contents "This program takes search terms relative to
+  background image art held at wallhaven.cc, and downloads the
+  returned results in bulk. If no search terms are provided, then the
+  program will download a series of random images.
+" )
+  (group (:HEADER "Immediate exit options:")
+         (flag :short-name "h" :long-name "help"
+               :description "Print this help and exit.")
+         (flag :short-name "v" :long-name "version"
+               :description "Print version number and exit."))
+  (group (:HEADER "Search options")
+         (stropt :short-name "s" :long-name "search"
+                 :description "Search terms for desktop background images... ")))
+
 (defun -main (&optional args)
-  (declare (ignorable args))
-  ;; (load-pool)
-  (print args)
-  (doit (get-random-links)))
+  (make-context)
+  (let ((searchterms  (str:split " " (net.didierverna.clon:getopt :short-name "s"))))
+    (format t "Type of args: ~A~2%" (type-of searchterms))
+
+    (net.didierverna.clon:do-cmdline-options 
+     (option name value source)
+
+     (cond ((or (string= name "h") (string= name "help"))
+            (terpri)
+            (help)
+            (terpri)
+            (exit 0))
+           ((or (string= name "v") (string= name "version"))
+            (terpri)
+            (format t "~&[[ ~A : ~A ]]~2%" (lisp-implementation-type) (lisp-implementation-version))
+            (exit 0))))
+
+    (if searchterms
+        (progn
+          (format t "getting searched images...~2%")
+          (doit (get-searched-links searchterms)))
+      (progn 
+        (format t "getting random images...~2%")
+        (doit (get-random-links))))))

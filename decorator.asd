@@ -20,6 +20,7 @@
                #:ironclad
                #:zpb-exif
                #:net.didierverna.clon
+               #:mcclim
                ;; :cl-progress-bar
                )
   :pathname "./"
