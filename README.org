@@ -2,11 +2,10 @@
 
 This program, as of now, literally only provides the simplest possible
 implementation of this idea. It has no provision to log in, which
-means that the wallpapers will not include any NSFW content, and there
-is no provision for downloading images with specific tags. It creates
+means that the wallpapers will not include any NSFW content. It creates
 a directory hierarchy under your $HOME: Desktop_pics/YYMMDD/ where
 YYMMDD literally represents the canonical date on which the program is
 run. It stores the images inside of this directory.
 
 ** TODO -- implement login.
-** TODO -- implement tag searching
+
