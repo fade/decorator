@@ -219,11 +219,16 @@ wallpaper represented by each one."
                :description "Print version number and exit."))
   (group (:HEADER "Search options")
          (stropt :short-name "s" :long-name "search"
-                 :description "Search terms for desktop background images... ")))
+                 :description "Search terms for desktop background images... ")
+         (stropt :short-name "p" :long-name "page"
+                 :description "take the 'N'th page of a given search."
+                 :argument-name "PAGE"
+                 :default-value "1")))
 
 (defun -main (&optional args)
   (make-context)
-  (let ((searchterms  (str:split " " (net.didierverna.clon:getopt :short-name "s"))))
+  (let ((searchterms  (str:split " " (net.didierverna.clon:getopt :short-name "s")))
+        (page (parse-integer (getopt :short-name "p") :junk-allowed t)))
     (format t "Type of args: ~A~2%" (type-of searchterms))
 
     (net.didierverna.clon:do-cmdline-options 
@@ -242,7 +247,7 @@ wallpaper represented by each one."
     (if searchterms
         (progn
           (format t "getting searched images...~2%")
-          (doit (get-searched-links searchterms)))
+          (doit (get-searched-links searchterms :page page)))
       (progn 
         (format t "getting random images...~2%")
         (doit (get-random-links))))))
