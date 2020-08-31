@@ -226,10 +226,10 @@ wallpaper represented by each one."
                  :default-value "1")))
 
 (defun -main (&optional args)
+  (declare (ignorable args))
   (make-context)
   (let ((searchterms  (str:split " " (net.didierverna.clon:getopt :short-name "s")))
         (page (parse-integer (getopt :short-name "p") :junk-allowed t)))
-    (format t "Type of args: ~A~2%" (type-of searchterms))
 
     (net.didierverna.clon:do-cmdline-options 
      (option name value source)
