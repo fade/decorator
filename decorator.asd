@@ -25,5 +25,6 @@
                )
   :pathname "./"
   :components ((:file "app-utils")
-               (:file "decorator")))
+               (:file "decorator")
+               (:file "config")))
 
