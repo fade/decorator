@@ -68,9 +68,12 @@
 (defun get-searched-links (searchterms &key (url "https://wallhaven.cc/search") (page 1))
   "Return any images matched by wallhaven to the given searchterms."
   (enable-interpol-syntax)
-  (let* ((searchterms (cond ((and (listp searchterms) (> (length searchterms) 1))
-                             (str:join "+" searchterms))
-                            (t searchterms)))
+  (let* ((searchterms (cond
+                        ((and (stringp searchterms) (find #\Space searchterms))
+                         (str:join "+" (str:split " " searchterms :omit-nulls t)))
+                        ((and (listp searchterms) (> (length searchterms) 1))
+                         (str:join "+" searchterms))
+                        (t searchterms)))
          (url (format nil "~A?q=~A&page=~A" url searchterms page)))
     (format t "~&|||~A~2%" url)
     (fetch url *browser*)
@@ -80,7 +83,7 @@
         (if (cl-ppcre:scan "^.*/w/.*" (cl-mechanize::link-url link))
             (push (cl-mechanize::link-url link) linkresults)))
       (disable-interpol-syntax)
-      linkresults)))
+      (alexandria:shuffle linkresults))))
 
 (defun pprint-download (furl opath &key (stream t))
   "Download via the cl-mechanize download feature, but emit
@@ -121,9 +124,9 @@
                    seqnumber (list "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
           (pprint-download fileurl outpath)
           ;; if the file lands, but we already have it, delete it.
-          (let* ((wegotit (already-got-it? outpath)))
+          (let* ((wegotit (already-got-it? outpath))) ;; store this here, so we don't ask twice.
             (when wegotit
-                (delete-duplicate-file wegotit))))
+              (delete-duplicate-file wegotit))))
       ;; in this case, the file is probably not a jpg. try png.
       (HTTP-ERROR (c)
         (progn

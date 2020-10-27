@@ -5,6 +5,7 @@
   :description "Download some high resolution wallpapers blindly. A graphical chocolate box, really."
   :author "Brian O'Reilly <fade@deepsky.com>"
   :license "Lisp Lesser General Public License."
+  :version "0.0.1"
   :serial t
   :depends-on (#:cl-ppcre
                #:cl-interpol
@@ -20,7 +21,7 @@
                #:ironclad
                #:zpb-exif
                #:net.didierverna.clon
-               #-DARWIN #:mcclim
+               ;; #-DARWIN #:mcclim
                ;; :cl-progress-bar
                )
   :pathname "./"
