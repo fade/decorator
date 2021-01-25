@@ -18,7 +18,7 @@
 (defparameter *full-wallpaper-path* "https://w.wallhaven.cc/full/"
   "this path needs to be rectified with a bucket number and a filename.")
 
-(defparameter *what-we-already-have* (make-hash-table :test #'equal))
+(defparameter *what-we-already-have* (make-hash-table :test #'equal :size 100000 :synchronized t))
 
 (eval-when (:load-toplevel :execute)
   (when (<= (hash-table-count *what-we-already-have*) 0)

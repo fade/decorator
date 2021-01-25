@@ -19,6 +19,9 @@
 ;; File functions and state to keep the images and their directories trim.
 ;;===============================================================================
 
+;;; set the lparallel kernel to a pool of six threads.
+(setf lparallel:*kernel* (lparallel:make-kernel 6))
+
 (defun sha1-file (path)
   (let ((sha1 (ironclad:make-digest 'ironclad:sha1)))
     (with-open-file (stream path :element-type '(unsigned-byte 8))
@@ -43,6 +46,15 @@
               (format t "~&~A :: ~A" hash path)
               (setf (gethash hash *what-we-already-have*) path)))
   (format t "~&[Done]~%"))
+
+(defun finser-aux (path)
+  "Given a hash and a path, do the mutation."
+  (multiple-value-bind (hash path) (sha1-file path)
+    (cond ((gethash hash *what-we-already-have*)
+           (format t "~&We already have ~A" path))
+          (t
+           (format t "~&~A :: ~A" hash path)
+           (setf (gethash hash *what-we-already-have*) path)))))
 
 ;;===============================================================================
 
