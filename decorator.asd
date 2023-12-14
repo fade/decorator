@@ -19,7 +19,9 @@
                #:bordeaux-threads
                #:lparallel
                #:ironclad
+               #:log4cl
                #:zpb-exif
+               #:defmain
                #:net.didierverna.clon
                ;; #-DARWIN #:mcclim
                ;; :cl-progress-bar

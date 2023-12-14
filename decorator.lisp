@@ -19,8 +19,9 @@
 ;; File functions and state to keep the images and their directories trim.
 ;;===============================================================================
 
-;;; set the lparallel kernel to a pool of six threads.
-(setf lparallel:*kernel* (lparallel:make-kernel 6))
+;;; set the lparallel kernel to a pool of 12 threads, because my
+;;; development workstation has a lot of CPU
+(setf lparallel:*kernel* (lparallel:make-kernel 12))
 
 (defun sha1-file (path)
   (let ((sha1 (ironclad:make-digest 'ironclad:sha1)))
@@ -31,21 +32,36 @@
 (defun log-file-hashes (&key (path *aggregate-storage-directory*)
                           (output-file #P "/tmp/slow-swill.txt"))
   (with-open-file (s output-file :direction :output :if-exists :supersede :if-does-not-exist :create)
-    (loop for file in (uiop:directory-files path)
-          for (hash path) = (multiple-value-list (sha1-file file))
-          :do (format s "~&~A :: ~A" hash path))))
+    (loop
+      for count from 1
+      for file in (uiop:directory-files path)
+      for (hash path) = (multiple-value-list (sha1-file file))
+      :do (format s "~&[~6d] ~A :: ~A" count hash path))))
+
+(defun lparallel-load-pool (&key (path *aggregate-storage-directory*))
+  (let ((count 0))
+    (lparallel:pmapcar
+     (lambda (file)
+       (multiple-value-bind (hash path) (sha1-file file)
+         (unless (gethash hash *what-we-already-have*)
+           (format t "~&[~6d] ~A :: ~A" count hash path)
+           (setf (gethash hash *what-we-already-have*) path)
+           (incf count))))
+     (uiop:directory-files path))))
 
 (defun load-pool (&key (path *aggregate-storage-directory*))
-  ;; for every file in the given directory (path), calculate its hash
-  ;; and put it in the special table
+  "for every file in the given directory :path, calculate its hash
+  and put it in the special table"
   (format t "~&Loading hashes for pre-existing files in ~A~%" path)
-  (loop for file in (uiop:directory-files path)
-        for (hash path) = (multiple-value-list (sha1-file file))
-        :unless (gethash hash *what-we-already-have*)
-        :do (progn
-              (format t "~&~A :: ~A" hash path)
-              (setf (gethash hash *what-we-already-have*) path)))
-  (format t "~&[Done]~%"))
+  (loop
+    for count from 1
+    for file in (uiop:directory-files path)
+    for (hash path) = (multiple-value-list (sha1-file file))
+    :unless (gethash hash *what-we-already-have*)
+      :do (progn
+            ;; (log:info "~&[~6d] ~A :: ~A" count hash path)
+            (setf (gethash hash *what-we-already-have*) path)))
+  (log:info "~&[Done]~%"))
 
 (defun finser-aux (path)
   "Given a hash and a path, do the mutation."
@@ -113,10 +129,10 @@
 
 (defun delete-duplicate-file (file &key (hashtable *what-we-already-have*))
   (multiple-value-bind (hash path) (sha1-file file)
-      (when (gethash hash hashtable)
-        (progn
-          (format t "~&Unlinking duplicate file ~A which already exists at ~A~%~%" path (gethash hash hashtable))
-          (delete-file path)))))
+    (when (gethash hash hashtable)
+      (progn
+        (format t "~&Unlinking duplicate file ~A which already exists at ~A~%~%" path (gethash hash hashtable))
+        (delete-file path)))))
 
 (defun getit (link &key (url *full-wallpaper-path*) (type "jpg"))
   (let* ((*picture-storage* (ensure-directories-exist 
@@ -133,7 +149,7 @@
     (handler-case
         (progn
           (format t "~&~%vvv=====================================================================~%~&Sequence number: ~0,9D ~%~{~A~^ ~%~}~%"
-                   seqnumber (list "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
+                  seqnumber (list "output name:" outname "output path:" outpath "index link:" link "actual URL:" fileurl))
           (pprint-download fileurl outpath)
           ;; if the file lands, but we already have it, delete it.
           (let* ((wegotit (already-got-it? outpath))) ;; store this here, so we don't ask twice.
@@ -199,8 +215,7 @@ wallpaper represented by each one."
   (text :contents "This program takes search terms relative to
   background image art held at wallhaven.cc, and downloads the
   returned results in bulk. If no search terms are provided, then the
-  program will download a series of random images.
-" )
+  program will download a series of random images.")
   (group (:HEADER "Immediate exit options:")
          (flag :short-name "h" :long-name "help"
                :description "Print this help and exit.")
@@ -221,22 +236,22 @@ wallpaper represented by each one."
         (page (parse-integer (getopt :short-name "p") :junk-allowed t)))
 
     (net.didierverna.clon:do-cmdline-options 
-     (option name value source)
+        (option name value source)
 
-     (cond ((or (string= name "h") (string= name "help"))
-            (terpri)
-            (help)
-            (terpri)
-            (exit 0))
-           ((or (string= name "v") (string= name "version"))
-            (terpri)
-            (format t "~&[[ ~A : ~A ]]~2%" (lisp-implementation-type) (lisp-implementation-version))
-            (exit 0))))
+      (cond ((or (string= name "h") (string= name "help"))
+             (terpri)
+             (help)
+             (terpri)
+             (exit 0))
+            ((or (string= name "v") (string= name "version"))
+             (terpri)
+             (format t "~&[[ ~A : ~A ]]~2%" (lisp-implementation-type) (lisp-implementation-version))
+             (exit 0))))
 
     (if searchterms
         (progn
           (format t "getting searched images...~2%")
           (doit (get-searched-links searchterms :page page)))
-      (progn 
-        (format t "getting random images...~2%")
-        (doit (get-random-links))))))
+        (progn 
+          (format t "getting random images...~2%")
+          (doit (get-random-links))))))
