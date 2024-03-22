@@ -1,5 +1,8 @@
 (in-package :decorator)
 
+;; how many threads to start on index..
+(defparameter *threads* 22)
+
 ;; determine what log info we see.
 (log4cl:log-config :debug)
 
@@ -24,10 +27,10 @@
     (format nil "Desktop_pics/dpool/")
     (user-homedir-pathname))))
 
-(defun funcfact (n)
+(defun fact (n)
   (if (<= n 0)
-    1
-    (* (n (fact (1- n))))))
+      1
+      (* (n (fact (1- n))))))
 
 (defun no-hidden-directories (&key (dir *picture-base-storage*))
   "given a directory :dir, return a list of all non hidden

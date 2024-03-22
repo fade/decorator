@@ -19,9 +19,9 @@
 ;; File functions and state to keep the images and their directories trim.
 ;;===============================================================================
 
-;;; set the lparallel kernel to a pool of 12 threads, because my
+;;; set the lparallel kernel to a pool of 22 threads, because my
 ;;; development workstation has a lot of CPU
-(setf lparallel:*kernel* (lparallel:make-kernel 12))
+;; (setf lparallel:*kernel* (lparallel:make-kernel 22))
 
 (defun sha1-file (path)
   (let ((sha1 (ironclad:make-digest 'ironclad:sha1)))
@@ -39,6 +39,7 @@
       :do (format s "~&[~6d] ~A :: ~A" count hash path))))
 
 (defun lparallel-load-pool (&key (path *aggregate-storage-directory*))
+  (setf lparallel:*kernel* (lparallel:make-kernel *threads*))
   (let ((count 0))
     (lparallel:pmapcar
      (lambda (file)
@@ -47,7 +48,8 @@
            (format t "~&[~6d] ~A :: ~A" count hash path)
            (setf (gethash hash *what-we-already-have*) path)
            (incf count))))
-     (uiop:directory-files path))))
+     (uiop:directory-files path))
+    (lparallel:end-kernel)))
 
 (defun load-pool (&key (path *aggregate-storage-directory*))
   "for every file in the given directory :path, calculate its hash
@@ -93,7 +95,15 @@
 
 ;; https://wallhaven.cc/search?q=city+night+woman+blue&categories=110&purity=100&sorting=relevance&order=desc
 ;; https://wallhaven.cc/search?q=city%20night%20woman&categories=110&purity=100&sorting=relevance&order=desc&page=2
-(defun get-searched-links (searchterms &key (url "https://wallhaven.cc/search") (page 1))
+;; https://wallhaven.cc/search?categories=101&purity=101&atleast=1920x1080&topRange=1y&sorting=toplist&order=desc&colors=0066cc&ai_art_filter=0
+(defun get-searched-links (searchterms &key (categories 101)
+                                         (purity 101)
+                                         (atleast "1920x1080")
+                                         (topRange "1y")
+                                         (sorting "toplist")
+                                         (colors "0066cc")
+                                         (ai_art_filter 0)
+                                         (url "https://wallhaven.cc/search") (page 1))
   "Return any images matched by wallhaven to the given searchterms."
   (enable-interpol-syntax)
   (let* ((searchterms (cond
@@ -102,7 +112,7 @@
                         ((and (listp searchterms) (> (length searchterms) 1))
                          (str:join "+" searchterms))
                         (t searchterms)))
-         (url (format nil "~A?q=~A&page=~A" url searchterms page)))
+         (url (format nil "~A?q=~A&categories=~A&purity=~A&atleast=~A&topRange=~A&order=desc&colors=~A&ai_art_filter=~A&page=~A" url searchterms categories purity atleast toprange colors ai_art_filter page)))
     (format t "~&|||~A~2%" url)
     (fetch url *browser*)
     (let ((results (browser-page *browser*))
